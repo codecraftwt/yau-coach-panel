@@ -17,6 +17,7 @@ const CoachHeader = ({
   const handleSignOut = async () => {
     try {
       await signOutCoach();
+      localStorage.removeItem('currentUser');
       localStorage.removeItem('coachUser');
       navigate('/login');
     } catch (error) {

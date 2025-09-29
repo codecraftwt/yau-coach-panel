@@ -9,6 +9,8 @@ import Schedule from '../schedule/Schedule';
 import CoachMessages from '../messages/CoachMessages';
 import Resources from '../resources/Resources';
 import { useCoachData } from '../../hooks/useCoachData';
+import SupportPage from '../Suport/Support';
+import Profile from '../Profile/Profile';
 
 const CoachLayout = ({ userData, onSwitchToMemberView }) => {
   const location = useLocation();
@@ -98,6 +100,17 @@ const CoachLayout = ({ userData, onSwitchToMemberView }) => {
                 />
               } 
             />
+            <Route 
+              path="/my-teams-ids" 
+              element={
+                // <TeamsRosters 
+                //   rosters={filteredRosters}
+                //   coachData={userData}
+                //   onRefresh={refreshData}
+                // />
+                <> <h1 className='text-center p-4 text-2xl'>My Team ID's Comming Soon...</h1></>
+              } 
+            />
             
             <Route 
               path="/schedule" 
@@ -111,7 +124,7 @@ const CoachLayout = ({ userData, onSwitchToMemberView }) => {
               } 
             />
             
-            <Route 
+            {/* <Route 
               path="/messages" 
               element={
                 <CoachMessages 
@@ -119,11 +132,27 @@ const CoachLayout = ({ userData, onSwitchToMemberView }) => {
                   rosters={rosters}
                 />
               } 
-            />
+            /> */}
             
             <Route 
               path="/resources" 
-              element={<Resources />} 
+              // element={<Resources />} 
+              element={<> <h1 className='text-center p-4 text-2xl'>Resources Comming Soon...</h1></>} 
+            />
+            <Route 
+              path="/attendance" 
+              // element={<Resources />} 
+              element={<> <h1 className='text-center p-4 text-2xl'>Attendance Comming Soon...</h1></>} 
+            />
+            <Route 
+              path="/support" 
+              element={<SupportPage  />} 
+
+            />
+            <Route 
+              path="/profile" 
+              element={<Profile  />} 
+
             />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -73,7 +73,7 @@ const Schedule = ({ schedule, rosters, coachData, onRefresh }) => {
         <div className="flex space-x-3">
           <button
             onClick={() => setShowCreatePractice(true)}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="hidden flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus size={16} />
             <span>Create Practice</span>

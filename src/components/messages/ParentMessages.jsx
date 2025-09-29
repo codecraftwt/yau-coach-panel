@@ -28,7 +28,7 @@ const ParentMessages = ({ coachData, rosters, messages }) => {
     return roster ? (roster.teamName || `${roster.ageGroup} ${roster.sport}`) : 'Unknown Team';
   };
 
-  const filteredMessages = messages.filter(message => {
+  const filteredMessages = messages?.filter(message => {
     const matchesSearch = !searchTerm || 
       message.parentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       message.playerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,7 +86,7 @@ const ParentMessages = ({ coachData, rosters, messages }) => {
         </div>
       </div>
 
-      {filteredMessages.length > 0 ? (
+      {filteredMessages?.length > 0 ? (
         <div className="space-y-4">
           {filteredMessages.map((message) => (
             <div
@@ -208,12 +208,12 @@ const ParentMessages = ({ coachData, rosters, messages }) => {
         <div className="text-center py-12">
           <MessageSquare size={48} className="mx-auto text-gray-300 mb-3" />
           <h3 className="text-lg font-medium text-gray-600 mb-2">
-            {filteredMessages.length === 0 && messages.length > 0 
+            {filteredMessages?.length === 0 && messages?.length > 0 
               ? 'No Messages Found' 
               : 'No Parent Messages'}
           </h3>
           <p className="text-gray-500">
-            {filteredMessages.length === 0 && messages.length > 0
+            {filteredMessages?.length === 0 && messages?.length > 0
               ? 'Try adjusting your search or filter criteria.'
               : 'Parent messages will appear here when families send you direct messages.'}
           </p>
@@ -223,18 +223,18 @@ const ParentMessages = ({ coachData, rosters, messages }) => {
       {/* Statistics */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-blue-50 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">{messages.length}</div>
+          <div className="text-2xl font-bold text-blue-600">{messages?.length}</div>
           <div className="text-sm text-blue-600">Total Messages</div>
         </div>
         <div className="bg-green-50 rounded-lg p-4 text-center">
           <div className="text-2xl font-bold text-green-600">
-            {messages.filter(m => m.read).length}
+            {messages?.filter(m => m.read)?.length}
           </div>
           <div className="text-sm text-green-600">Read Messages</div>
         </div>
         <div className="bg-orange-50 rounded-lg p-4 text-center">
           <div className="text-2xl font-bold text-orange-600">
-            {messages.filter(m => !m.read).length}
+            {messages?.filter(m => !m.read)?.length}
           </div>
           <div className="text-sm text-orange-600">Unread Messages</div>
         </div>

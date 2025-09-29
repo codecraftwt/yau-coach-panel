@@ -18,7 +18,7 @@ const CoachDashboard = ({ onSwitchToMemberView }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
 
-  const { rosters, schedule, loading: dataLoading, refreshData } = useCoachData(coachData?.id);
+  const { rosters, schedule, loading: dataLoading, refreshData, } = useCoachData(coachData?.id);
   const { messages } = useTeamMessages(coachData?.id);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const CoachDashboard = ({ onSwitchToMemberView }) => {
     try {
       await signOutCoach();
       localStorage.removeItem('currentUser');
-      window.location.href = '/coach-login';
+      window.location.href = '/login';
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -177,15 +177,21 @@ const CoachDashboard = ({ onSwitchToMemberView }) => {
         )}
 
         {activeTab === 'messages' && (
-          <CoachMessages 
-            coachData={coachData}
-            rosters={rosters}
-            messages={messages}
-          />
+          // <CoachMessages 
+          //   coachData={coachData}
+          //   rosters={rosters}
+          //   messages={messages}
+          // />
+          <>
+            <h1>Comming Soon...</h1>
+          </>
         )}
 
         {activeTab === 'resources' && (
-          <Resources />
+          // <Resources />
+          <>
+            <h1>Comming Soon...</h1>
+          </>
         )}
       </div>
     </div>

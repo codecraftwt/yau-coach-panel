@@ -181,6 +181,7 @@ export const signOutCoach = async () => {
     console.log('🚪 Signing out coach...');
     await signOut(auth);
     localStorage.removeItem('coachUser');
+    localStorage.removeItem('currentUser');
     localStorage.removeItem('coachAuthTime');
     console.log('✅ Coach signed out successfully');
   } catch (error) {

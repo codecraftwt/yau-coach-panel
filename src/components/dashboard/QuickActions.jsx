@@ -51,14 +51,55 @@ const QuickActions = ({ coachData, teams, onRefresh }) => {
         {quickActions.map((action, index) => {
           const Icon = action.icon;
           return (
-            <button
-              key={index}
-              onClick={action.onClick}
-              className={`${action.bgColor} ${action.hoverColor} text-white p-6 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:transform hover:-translate-y-1 flex flex-col items-center space-y-3`}
-            >
-              <Icon size={32} />
-              <span className="font-semibold text-lg">{action.label}</span>
-            </button>
+            // <button
+            //   key={index}
+            //   onClick={action.onClick}
+            //   className={`${action.bgColor} ${action.hoverColor} text-white p-2  rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:transform hover:-translate-y-1 flex align- items-center gap-2`}
+            // >
+            //   <Icon size={32} />
+            //   <span className="font-semibold text-lg">{action.label}</span>
+            // </button>
+
+//             <button
+//   key={index}
+//   onClick={action.onClick}
+//   className={`
+//     ${action.bgColor} ${action.hoverColor} 
+//     text-white p-3 rounded-xl 
+//     shadow-md hover:shadow-xl 
+//     transition-all duration-300 ease-in-out 
+//     transform hover:-translate-y-1 
+//     flex items-center gap-3 
+//     bg-gradient-to-r from-blue-950  via-slate-400 to-blue-950
+//     hover:brightness-110
+//   `}
+// >
+//   <Icon size={28} />
+//   <span className="font-semibold text-lg">{action.label}</span>
+// </button>
+
+
+<button
+  key={index}
+  onClick={action.onClick}
+  className={`
+    ${action.bgColor} ${action.hoverColor} 
+    text-white p-3 rounded-xl 
+    shadow-md hover:shadow-xl 
+    transition-all duration-300 ease-in-out 
+    transform hover:-translate-y-1 
+    flex items-center gap-3 
+    relative overflow-hidden
+    group
+  `}
+>
+
+  
+  <Icon size={28} className="z-10" />
+  <span className="font-semibold text-lg z-10">{action.label}</span>
+</button>
+
+
           );
         })}
       </div>

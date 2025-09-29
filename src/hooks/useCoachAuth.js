@@ -142,6 +142,8 @@ export const useCoachAuth = () => {
     userData,
     loading,
     error,
-    isAuthenticated: !!user && !!userData && !error
+    isAuthenticated: !!user && !!userData && !error,
+    setUserData,
+    setUser
   };
 };

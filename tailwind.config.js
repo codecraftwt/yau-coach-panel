@@ -21,12 +21,17 @@ module.exports = {
       },
       animation: {
         'in': 'slideIn 0.3s ease-out',
+        shine: 'shine 1.5s ease-in-out infinite',
       },
       keyframes: {
         slideIn: {
           '0%': { transform: 'translateY(1rem)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
-        }
+        },
+         shine: {
+          '0%': { left: '-75%' },
+          '100%': { left: '125%' },
+        },
       }
     },
   },

@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   BarChart3, Users, Calendar, MessageSquare, BookOpen,
-  LogOut, ExternalLink, X, Menu, User
+  LogOut, ExternalLink, X, Menu, User,ClipboardPenLine, IdCard ,HandHelping ,UserRound 
 } from 'lucide-react';
 import { signOutCoach } from '../../firebase/coachAuth';
 
@@ -40,22 +40,40 @@ const CoachSidebar = ({
       path: '/teams'
     },
     {
+      id: 'myteamids',
+      label: `My Team ID's`,
+      icon: IdCard ,
+      path: '/my-teams-ids'
+    },
+    {
       id: 'schedule',
       label: 'Schedule',
       icon: Calendar,
       path: '/schedule'
     },
+    // {
+    //   id: 'messages',
+    //   label: 'Messages',
+    //   icon: MessageSquare,
+    //   path: '/messages'
+    // },
     {
-      id: 'messages',
-      label: 'Messages',
-      icon: MessageSquare,
-      path: '/messages'
+      id: 'attendance',
+      label: 'Attendance',
+      icon: ClipboardPenLine ,
+      path: '/attendance'
     },
     {
       id: 'resources',
       label: 'Resources',
       icon: BookOpen,
       path: '/resources'
+    },
+    {
+      id: 'profile',
+      label: 'Profile',
+      icon: UserRound ,
+      path: '/profile'
     }
   ];
 
@@ -118,6 +136,13 @@ const CoachSidebar = ({
       <div className="p-4 border-t border-white/10">
         <div className="space-y-2">
           <button
+            onClick={() =>navigate('/support')}
+            className="w-full flex items-center px-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <MessageSquare size={16} className="mr-3" />
+            Contact Support
+          </button>
+          <button
             onClick={onSwitchToMemberView}
             className="w-full flex items-center px-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
           >
@@ -125,13 +150,6 @@ const CoachSidebar = ({
             Member Portal
           </button>
           
-          <button
-            onClick={() => window.open('mailto:coaches@yauapp.com')}
-            className="w-full flex items-center px-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <MessageSquare size={16} className="mr-3" />
-            Contact Support
-          </button>
         </div>
       </div>
 
