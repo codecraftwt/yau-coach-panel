@@ -5,6 +5,7 @@ import CoachSidebar from './CoachSidebar';
 import CoachHeader from './CoachHeader';
 import CoachDashboard from '../dashboard/CoachDashboard';
 import TeamsRosters from '../teams/TeamsRosters';
+import MyTeamIds from '../teams/MyTeamIds';
 import Schedule from '../schedule/Schedule';
 import CoachMessages from '../messages/CoachMessages';
 import Resources from '../resources/Resources';
@@ -100,16 +101,14 @@ const CoachLayout = ({ userData, onSwitchToMemberView }) => {
                 />
               } 
             />
-            <Route 
-              path="/my-teams-ids" 
+            <Route
+              path="/my-teams-ids"
               element={
-                // <TeamsRosters 
-                //   rosters={filteredRosters}
-                //   coachData={userData}
-                //   onRefresh={refreshData}
-                // />
-                <> <h1 className='text-center p-4 text-2xl'>My Team ID's Comming Soon...</h1></>
-              } 
+                <MyTeamIds
+                  rosters={rosters}
+                  coachData={userData}
+                />
+              }
             />
             
             <Route 
@@ -124,15 +123,15 @@ const CoachLayout = ({ userData, onSwitchToMemberView }) => {
               } 
             />
             
-            {/* <Route 
-              path="/messages" 
+            <Route
+              path="/messages"
               element={
-                <CoachMessages 
+                <CoachMessages
                   coachData={userData}
                   rosters={rosters}
                 />
-              } 
-            /> */}
+              }
+            />
             
             <Route 
               path="/resources" 
