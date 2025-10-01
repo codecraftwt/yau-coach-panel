@@ -40,7 +40,7 @@ const CoachSidebar = ({
       path: '/teams'
     },
     {
-      id: 'myteamids',
+      id: 'my-teams-ids',
       label: `My Team ID's`,
       icon: IdCard ,
       path: '/my-teams-ids'
@@ -51,12 +51,12 @@ const CoachSidebar = ({
       icon: Calendar,
       path: '/schedule'
     },
-    // {
-    //   id: 'messages',
-    //   label: 'Messages',
-    //   icon: MessageSquare,
-    //   path: '/messages'
-    // },
+    {
+      id: 'messages',
+      label: 'Messages',
+      icon: MessageSquare,
+      path: '/messages'
+    },
     {
       id: 'attendance',
       label: 'Attendance',
