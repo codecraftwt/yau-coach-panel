@@ -40,7 +40,7 @@ const Timesheet = ({ coachId }) => {
     const fetchEntries = async () => {
       try {
         setLoading(true);
-        const data = await getTimesheetEntries(coachId);
+        const data = await getTimesheetEntries();
         // Convert decimal hours back to HH:MM format for display in inputs
         const formattedData = data.map((entry) => ({
           ...entry,

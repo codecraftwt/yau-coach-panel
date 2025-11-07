@@ -99,9 +99,9 @@ export const reportScore = async (gameData) => {
 // ----------------- TIMESHEET -----------------
 
   // Fetch all timesheet entries for a coach
-  export const getTimesheetEntries = async (coachId) => {
+  export const getTimesheetEntries = async () => {
     try {
-      const url = buildApiUrl(`${API_CONFIG.endpoints.timesheets.get}?coachId=${coachId}`);
+      const url = buildApiUrl(`${API_CONFIG.endpoints.timesheets.get}`);
       return await coachApiCall(url);
     } catch (error) {
       console.error('Error fetching timesheet entries:', error);
