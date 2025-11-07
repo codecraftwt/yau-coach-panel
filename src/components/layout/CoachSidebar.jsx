@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  BarChart3, Users, Calendar, MessageSquare, BookOpen,
+  BarChart3,Sheet , Users, Calendar, MessageSquare, BookOpen,
   LogOut, ExternalLink, X, Menu, User,ClipboardPenLine, IdCard ,HandHelping ,UserRound 
 } from 'lucide-react';
 import { signOutCoach } from '../../firebase/coachAuth';
@@ -32,6 +32,12 @@ const CoachSidebar = ({
       label: 'Dashboard',
       icon: BarChart3,
       path: '/dashboard'
+    },
+    {
+      id: 'timeSheet',
+      label: 'Time Sheet',
+      icon: Sheet,
+      path: '/timeSheet'
     },
     {
       id: 'teams',

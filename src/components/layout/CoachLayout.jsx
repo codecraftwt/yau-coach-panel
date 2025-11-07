@@ -12,6 +12,7 @@ import Resources from '../resources/Resources';
 import { useCoachData } from '../../hooks/useCoachData';
 import SupportPage from '../Suport/Support';
 import Profile from '../Profile/Profile';
+import Timesheet from '../timeSheet/Timesheet';
 
 const CoachLayout = ({ userData, onSwitchToMemberView }) => {
   const location = useLocation();
@@ -88,6 +89,12 @@ const CoachLayout = ({ userData, onSwitchToMemberView }) => {
                   schedule={schedule}
                   onRefresh={refreshData}
                 />
+              } 
+            />
+            <Route 
+              path="/timeSheet" 
+              element={
+                <Timesheet/>
               } 
             />
             
