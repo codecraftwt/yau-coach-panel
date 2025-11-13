@@ -1,157 +1,365 @@
 // EnhancedTimesheet.jsx
 import React, { useState, useEffect } from "react";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Send, Clock } from "lucide-react";
 import {
   getTimesheetEntries,
   createTimesheetEntry,
   updateTimesheetEntry,
   deleteTimesheetEntry,
-  getAllLocations,
+  submitTimesheetEntry,
 } from "../../services/coachAPI";
 
-const Timesheet = ({ coachId }) => {
+const Timesheet = () => {
   const [entries, setEntries] = useState([]);
   const [filteredEntries, setFilteredEntries] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [totalHours, setTotalHours] = useState(0);
-  const [totalMinutes, setTotelMinutes] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [addTimesheetButton, setAddTimesheetButton] = useState(false);
   const [editingEntry, setEditingEntry] = useState({
     id: null,
     date: "",
+    startTime: { hours: "", minutes: "", ampm: "AM" },
+    endTime: { hours: "", minutes: "", ampm: "AM" },
     location: "",
-    hours: "",
-    note: "",
+    notes: "",
+    status: "draft",
   });
-  const [locations, setLocations] = useState([["Roosevelt HS – Turf"]]);
-  const totalHoursDecimal = entries.reduce(
-    (sum, entry) => sum + Number(entry.hours),
-    0
-  );
 
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split("T")[0],
-    location: "Roosevelt HS – Turf",
-    hours: "",
-    note: "",
+    startTime: { hours: "9", minutes: "00", ampm: "AM" },
+    endTime: { hours: "5", minutes: "00", ampm: "PM" },
+    location: "",
+    notes: "",
   });
 
+  const [timeError, setTimeError] = useState("");
+
+  // Generate time options for dropdowns
+  const hoursOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+  const minutesOptions = ["00", "15", "30", "45"];
+
+  // Recalculate hours for existing entries on component load - FIXED VERSION
   useEffect(() => {
-    const fetchEntries = async () => {
+    const recalculateExistingEntries = async () => {
+      if (entries.length > 0) {
+        console.log("Recalculating hours for existing entries...");
+
+        let needsUpdate = false;
+        const updatedEntries = entries.map((entry) => {
+          // Only recalculate entries that have 0 hours but valid times
+          if (
+            (entry.totalHours === 0 || entry.totalHours === null) &&
+            entry.startTime &&
+            entry.endTime
+          ) {
+            const calculatedHours = calculateHours(
+              entry.startTime,
+              entry.endTime,
+              entry.date
+            );
+            console.log(
+              `Entry ${entry.id}: ${entry.startTime} - ${entry.endTime} = ${calculatedHours}h`
+            );
+
+            if (calculatedHours > 0 && calculatedHours !== entry.totalHours) {
+              needsUpdate = true;
+              return { ...entry, totalHours: calculatedHours };
+            }
+          }
+          return entry;
+        });
+
+        if (needsUpdate) {
+          console.log("Updating entries with corrected hours");
+          setEntries(updatedEntries);
+        }
+      }
+    };
+
+    // Only run this once when entries are first loaded, not on every re-render
+    if (entries.length > 0) {
+      recalculateExistingEntries();
+    }
+  }, [entries.length === 0 ? null : entries[0]?.id]); // Only run when the first entry ID changes (initial load)
+
+  useEffect(() => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await getTimesheetEntries();
-        // Convert decimal hours back to HH:MM format for display in inputs
-        const formattedData = data.map((entry) => ({
-          ...entry,
-          hours: convertDecimalToTime(entry.hours),
-        }));
-        setEntries(formattedData);
-        const res = await getAllLocations();
-        if (res.success && res.data) {
-          const locNames = res.data.map((loc) => loc.name);
-          setLocations(locNames);
-        }
+
+        // Fetch timesheet entries
+        const entriesData = await getTimesheetEntries();
+        setEntries(entriesData.data || []);
+
         setLoading(false);
       } catch (err) {
         setLoading(false);
-        console.error("Failed to fetch timesheet entries:", err);
+        console.error("Failed to fetch data:", err);
+        alert(err.message || "Failed to load timesheet data");
       }
     };
-    fetchEntries();
-  }, [coachId]);
+
+    fetchData();
+  }, []);
 
   // Apply filter and search
   useEffect(() => {
-    let filtered = entries;
-    setFilteredEntries(filtered);
+    setFilteredEntries(entries);
   }, [entries]);
 
-  // Helper function to convert HH:MM to decimal hours
-  const convertTimeToDecimal = (timeString) => {
-    if (!timeString) return 0;
-    const [hours, minutes] = timeString.split(":").map(Number);
-    return parseFloat((hours + minutes / 60).toFixed(2));
+  // Convert time object to 12-hour format string
+  const timeObjectToString = (timeObj) => {
+    if (!timeObj.hours || !timeObj.minutes || !timeObj.ampm) return "";
+    return `${timeObj.hours}:${timeObj.minutes} ${timeObj.ampm}`;
   };
+
+  // Convert 12-hour format string to time object
+  const timeStringToObject = (timeString) => {
+    if (!timeString) return { hours: "", minutes: "", ampm: "AM" };
+
+    try {
+      const [timePart, ampm] = timeString.split(" ");
+      const [hours, minutes] = timePart.split(":");
+      return { hours, minutes, ampm: ampm || "AM" };
+    } catch (error) {
+      return { hours: "", minutes: "", ampm: "AM" };
+    }
+  };
+
+  // Convert time to US timezone and format for storage
+  const convertToUSTime = (date, timeObj) => {
+    if (!timeObj.hours || !timeObj.minutes) return "";
+
+    try {
+      // Simply return the formatted time without timezone conversion for now
+      // Timezone conversion is causing issues with hour calculation
+      return `${timeObj.hours}:${timeObj.minutes} ${timeObj.ampm}`;
+    } catch (error) {
+      console.error("Error converting time:", error);
+      // Fallback to original if conversion fails
+      return `${timeObj.hours}:${timeObj.minutes} ${timeObj.ampm}`;
+    }
+  };
+
+  // Validate that times are valid (allows overnight shifts)
+  const validateTimes = (date, startTime, endTime) => {
+    if (
+      !startTime.hours ||
+      !startTime.minutes ||
+      !endTime.hours ||
+      !endTime.minutes
+    ) {
+      return true; // Allow empty times for form validation
+    }
+    return true;
+  };
+
+  const calculateHours = (startTimeStr, endTimeStr, date) => {
+    if (!startTimeStr || !endTimeStr) return 0;
+
+    try {
+      // Helper function to convert 12-hour time to minutes since midnight
+      const timeToMinutes = (timeStr) => {
+        const [timePart, ampm] = timeStr.split(" ");
+        const [hours, minutes] = timePart.split(":");
+
+        let hour = parseInt(hours, 10);
+        const min = parseInt(minutes, 10) || 0;
+
+        // Convert to 24-hour format
+        if (ampm === "PM" && hour !== 12) {
+          hour += 12;
+        } else if (ampm === "AM" && hour === 12) {
+          hour = 0;
+        }
+
+        return hour * 60 + min;
+      };
+
+      const startMinutes = timeToMinutes(startTimeStr);
+      const endMinutes = timeToMinutes(endTimeStr);
+
+      let totalMinutes;
+
+      // Handle overnight shifts (end time is earlier than start time)
+      if (endMinutes <= startMinutes) {
+        totalMinutes = 24 * 60 - startMinutes + endMinutes;
+      } else {
+        totalMinutes = endMinutes - startMinutes;
+      }
+
+      const hours = totalMinutes / 60;
+      return Math.round(hours * 100) / 100;
+    } catch (error) {
+      console.error("Error calculating hours:", error);
+      return 0;
+    }
+  };
+
+  // Calculate total hours from entries
+  const calculateTotalStats = () => {
+    const totalHours = entries.reduce(
+      (sum, entry) => sum + (entry.totalHours || 0),
+      0
+    );
+    const draftEntries = entries.filter(
+      (entry) => entry.status === "draft"
+    ).length;
+    const submittedEntries = entries.filter(
+      (entry) => entry.status === "submitted"
+    ).length;
+    const approvedEntries = entries.filter(
+      (entry) => entry.status === "approved"
+    ).length;
+    const rejectedEntries = entries.filter(
+      (entry) => entry.status === "rejected"
+    ).length;
+
+    return {
+      totalHours: Math.round(totalHours * 100) / 100,
+      totalEntries: entries.length,
+      draftEntries,
+      submittedEntries,
+      approvedEntries,
+      rejectedEntries,
+    };
+  };
+
+  const stats = calculateTotalStats();
 
   // Add new entry
   const handleAddEntry = async () => {
-    if (!newEntry.hours || !newEntry.date || !newEntry.location) {
-      alert("Please fill in required fields");
+    if (
+      !newEntry.date ||
+      !newEntry.startTime.hours ||
+      !newEntry.endTime.hours ||
+      !newEntry.location
+    ) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    if (!newEntry.location.trim()) {
+      alert("Please enter a location");
       return;
     }
 
     try {
-      const savedEntry = await createTimesheetEntry({
-        ...newEntry,
-        hours: convertTimeToDecimal(newEntry.hours),
-        coachId,
-      });
+      const startTimeString = timeObjectToString(newEntry.startTime);
+      const endTimeString = timeObjectToString(newEntry.endTime);
 
-      // Convert the returned entry back to HH:MM format for local state
-      const formattedEntry = {
-        ...savedEntry,
-        hours: convertDecimalToTime(savedEntry.hours),
+      console.log(
+        "Adding entry with times:",
+        startTimeString,
+        endTimeString,
+        newEntry.date
+      );
+
+      const calculatedHours = calculateHours(
+        startTimeString,
+        endTimeString,
+        newEntry.date
+      );
+      console.log("Calculated hours for new entry:", calculatedHours);
+
+      const entryData = {
+        date: newEntry.date,
+        startTime: convertToUSTime(newEntry.date, newEntry.startTime),
+        endTime: convertToUSTime(newEntry.date, newEntry.endTime),
+        location: newEntry.location.trim(),
+        notes: newEntry.notes || "",
+        totalHours: calculatedHours,
       };
-      setEntries([...entries, formattedEntry]);
 
-      setEntries([...entries, savedEntry]);
-      setNewEntry((prev) => ({
-        ...prev,
-        hours: "",
-        note: "",
-      }));
+      console.log("Final entry data:", entryData);
+
+      const response = await createTimesheetEntry(entryData);
+
+      if (response.success) {
+        setEntries([response.data, ...entries]);
+        setNewEntry({
+          date: new Date().toISOString().split("T")[0],
+          startTime: { hours: "9", minutes: "00", ampm: "AM" },
+          endTime: { hours: "5", minutes: "00", ampm: "PM" },
+          location: "",
+          notes: "",
+        });
+        alert("Timesheet entry added successfully!");
+      } else {
+        alert(response.message || "Failed to add entry");
+      }
     } catch (err) {
       console.error("Failed to add timesheet entry:", err);
+      alert(err.message || "Failed to add timesheet entry");
     }
   };
 
   // Edit entry
   const handleEdit = (entry) => {
-    setEditingEntry(entry);
+    setEditingEntry({
+      id: entry.id,
+      date: entry.date?.split("T")[0] || new Date().toISOString().split("T")[0],
+      startTime: timeStringToObject(entry.startTime),
+      endTime: timeStringToObject(entry.endTime),
+      location: entry.location,
+      notes: entry.notes || "",
+      status: entry.status,
+    });
     setIsModalOpen(true);
-  };
-
-  // Helper function to convert decimal hours to HH:MM format
-  const convertDecimalToTime = (decimalHours) => {
-    if (!decimalHours) return "00:00";
-    const hours = Math.floor(decimalHours);
-    const minutes = Math.round((decimalHours - hours) * 60);
-    setTotelMinutes((prevMinutes) => prevMinutes + minutes);
-    setTotalHours((prevMinutes) => prevMinutes + hours);
-    return `${hours.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}`;
+    setTimeError("");
   };
 
   // Save edited entry
   const handleSaveEdit = async () => {
-    if (!editingEntry.date || !editingEntry.hours || !editingEntry.location) {
-      alert("Please fill in required fields");
+    if (
+      !editingEntry.date ||
+      !editingEntry.startTime.hours ||
+      !editingEntry.endTime.hours ||
+      !editingEntry.location
+    ) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    if (!editingEntry.location.trim()) {
+      alert("Please enter a location");
       return;
     }
 
     try {
-      const updatedEntry = await updateTimesheetEntry(editingEntry.id, {
-        ...editingEntry,
-        hours: convertTimeToDecimal(editingEntry.hours),
-      });
+      const startTimeString = timeObjectToString(editingEntry.startTime);
+      const endTimeString = timeObjectToString(editingEntry.endTime);
 
-      // Convert the returned entry back to HH:MM format for local state
-      const formattedEntry = {
-        ...updatedEntry,
-        hours: convertDecimalToTime(updatedEntry.hours),
+      const updateData = {
+        date: editingEntry.date,
+        startTime: convertToUSTime(editingEntry.date, editingEntry.startTime),
+        endTime: convertToUSTime(editingEntry.date, editingEntry.endTime),
+        location: editingEntry.location.trim(),
+        notes: editingEntry.notes || "",
+        totalHours: calculateHours(
+          startTimeString,
+          endTimeString,
+          editingEntry.date
+        ),
       };
-      setEntries(
-        entries.map((e) => (e.id === formattedEntry.id ? formattedEntry : e))
-      );
 
-      setEntries(
-        entries.map((e) => (e.id === updatedEntry.id ? updatedEntry : e))
-      );
-      setIsModalOpen(false);
+      const response = await updateTimesheetEntry(editingEntry.id, updateData);
+
+      if (response.success) {
+        setEntries(
+          entries.map((entry) =>
+            entry.id === editingEntry.id ? response.data : entry
+          )
+        );
+        setIsModalOpen(false);
+        alert("Timesheet entry updated successfully!");
+      } else {
+        alert(response.message || "Failed to update entry");
+      }
     } catch (err) {
       console.error("Failed to update timesheet entry:", err);
+      alert(err.message || "Failed to update timesheet entry");
     }
   };
 
@@ -160,238 +368,407 @@ const Timesheet = ({ coachId }) => {
     if (!window.confirm("Are you sure you want to delete this entry?")) return;
 
     try {
-      await deleteTimesheetEntry(id);
-      setEntries(entries.filter((e) => e.id !== id));
+      const response = await deleteTimesheetEntry(id);
+
+      if (response.success) {
+        setEntries(entries.filter((entry) => entry.id !== id));
+        alert("Timesheet entry deleted successfully!");
+      } else {
+        alert(response.message || "Failed to delete entry");
+      }
     } catch (err) {
       console.error("Failed to delete timesheet entry:", err);
+      alert(err.message || "Failed to delete timesheet entry");
     }
   };
+
+  // Submit timesheet for review
+  const handleSubmit = async (id) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to submit this timesheet for review? You won't be able to edit it after submission."
+      )
+    )
+      return;
+
+    try {
+      const response = await submitTimesheetEntry(id);
+
+      if (response.success) {
+        setEntries(
+          entries.map((entry) => (entry.id === id ? response.data : entry))
+        );
+        // Fetch timesheet entries
+        const entriesData = await getTimesheetEntries();
+        setEntries(entriesData.data || []);
+        alert("Timesheet submitted for review successfully!");
+      } else {
+        alert(response.message || "Failed to submit timesheet");
+      }
+    } catch (err) {
+      console.error("Failed to submit timesheet:", err);
+      alert(err.message || "Failed to submit timesheet");
+    }
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "Invalid Date";
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
+  // Get status badge color
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      draft: { color: "bg-yellow-100 text-yellow-800", label: "Draft" },
+      submitted: { color: "bg-blue-100 text-blue-800", label: "Submitted" },
+      approved: { color: "bg-green-100 text-green-800", label: "Approved" },
+      rejected: { color: "bg-red-100 text-red-800", label: "Rejected" },
+    };
+
+    const config = statusConfig[status] || statusConfig.draft;
+    return (
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
+        {config.label}
+      </span>
+    );
+  };
+
+  // Time Selection Component
+  const TimeSelection = ({ time, onChange, label }) => (
+    <div className="flex flex-col">
+      <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+        <Clock size={16} className="text-gray-400" />
+        {label} (US Time Zone) *
+      </label>
+      <div className="flex gap-2">
+        {/* Hours Dropdown */}
+        <select
+          value={time.hours || ""}
+          onChange={(e) => onChange({ ...time, hours: e.target.value })}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        >
+          <option value="">Hour</option>
+          {hoursOptions.map((hour) => (
+            <option key={hour} value={hour}>
+              {hour}
+            </option>
+          ))}
+        </select>
+
+        {/* Minutes Dropdown */}
+        <select
+          value={time.minutes || ""}
+          onChange={(e) => onChange({ ...time, minutes: e.target.value })}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        >
+          <option value="">Min</option>
+          {minutesOptions.map((minute) => (
+            <option key={minute} value={minute}>
+              {minute}
+            </option>
+          ))}
+        </select>
+
+        {/* AM/PM Dropdown */}
+        <select
+          value={time.ampm || "AM"}
+          onChange={(e) => onChange({ ...time, ampm: e.target.value })}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        >
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <h1 className="text-sm font-medium text-gray-700 mb-2">
-        Dashbord / Timesheet
+        Dashboard / Timesheet
       </h1>
-      <h1 className="text-3xl font-bold text-gray-700 mb-2">Timesheet</h1>
-      <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b pb-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-2">
-              Add Hours
-            </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Timesheet</h1>
+        <button
+          onClick={() => setAddTimesheetButton((pre) => !pre)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium shadow-sm"
+        >
+          {addTimesheetButton ? "Add Timesheet" : "Add Timesheet"}
+        </button>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg p-4 shadow-sm border">
+          <div className="text-2xl font-bold text-gray-900">
+            {stats.totalEntries}
           </div>
+          <div className="text-sm text-gray-600">Total Entries</div>
         </div>
-
-        {/* Add Entry Form */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-700 mb-1">
-              Date
-            </label>
-            <input
-              type="date"
-              className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-auto focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              value={newEntry.date}
-              onChange={(e) =>
-                setNewEntry({ ...newEntry, date: e.target.value })
-              }
-            />
+        <div className="bg-white rounded-lg p-4 shadow-sm border">
+          <div className="text-2xl font-bold text-gray-900">
+            {stats.totalHours}h
           </div>
+          <div className="text-sm text-gray-600">Total Hours</div>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow-sm border">
+          <div className="text-2xl font-bold text-yellow-600">
+            {stats.draftEntries}
+          </div>
+          <div className="text-sm text-gray-600">Draft Entries</div>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow-sm border">
+          <div className="text-2xl font-bold text-blue-600">
+            {stats.submittedEntries}
+          </div>
+          <div className="text-sm text-gray-600">Submitted</div>
+        </div>
+      </div>
 
-          {/* Select version that stores same data format */}
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-700 mb-1">
-              Hours
-            </label>
-            <div className="flex space-x-2">
-              <select
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition w-[50%]"
-                value={newEntry.hours.split(":")[0] || "00"}
-                onChange={(e) => {
-                  const hours = e.target.value;
-                  const minutes = newEntry.hours.split(":")[1] || "00";
-                  setNewEntry({ ...newEntry, hours: `${hours}:${minutes}` });
-                }}
-              >
-                {Array.from({ length: 12 }, (_, i) => (
-                  <option key={i} value={i.toString().padStart(2, "0")}>
-                    {i.toString().padStart(2, "0")}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition w-[50%]"
-                value={newEntry.hours.split(":")[1] || "00"}
-                onChange={(e) => {
-                  const minutes = e.target.value;
-                  const hours = newEntry.hours.split(":")[0] || "00";
-                  setNewEntry({ ...newEntry, hours: `${hours}:${minutes}` });
-                }}
-              >
-                <option value="00">00</option>
-                <option value="15">15</option>
-                <option value="30">30</option>
-                <option value="45">45</option>
-              </select>
+      {/* Add Entry Form */}
+      {addTimesheetButton && (
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b pb-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-extrabold text-gray-900 mb-2">
+                Add Hours
+              </h1>
+              <p className="text-gray-600">Create a new timesheet entry</p>
             </div>
           </div>
 
-          <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
-            <select
-              className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-auto focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              value={newEntry.location}
-              onChange={(e) =>
-                setNewEntry({ ...newEntry, location: e.target.value })
-              }
-            >
-              <option value="">Select a location</option>
-              {locations.map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Date */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">
+                Date *
+              </label>
+              <input
+                type="date"
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                value={newEntry.date}
+                onChange={(e) =>
+                  setNewEntry({ ...newEntry, date: e.target.value })
+                }
+              />
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <div className="flex flex-col md:col-span-2">
-            <label className="text-sm font-medium text-gray-700 mb-1">
-              Note (optional)
-            </label>
-            <input
-              type="text"
-              placeholder="Add a note..."
-              className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-auto focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              value={newEntry.note}
-              onChange={(e) =>
-                setNewEntry({ ...newEntry, note: e.target.value })
-              }
+            {/* Start Time */}
+            <TimeSelection
+              time={newEntry.startTime}
+              onChange={(startTime) => setNewEntry({ ...newEntry, startTime })}
+              label="Start Time"
             />
+
+            {/* End Time */}
+            <TimeSelection
+              time={newEntry.endTime}
+              onChange={(endTime) => setNewEntry({ ...newEntry, endTime })}
+              label="End Time"
+            />
+
+            {/* Location - Input Field */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">
+                Location *
+              </label>
+              <input
+                type="text"
+                placeholder="Enter location name..."
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                value={newEntry.location}
+                onChange={(e) =>
+                  setNewEntry({ ...newEntry, location: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          {timeError && (
+            <div className="mt-2 text-red-600 text-sm">{timeError}</div>
+          )}
+
+          {/* Notes */}
+          <div className="grid grid-cols-1 mt-4">
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">
+                Notes (optional)
+              </label>
+              <textarea
+                placeholder="Add any additional information about the work session..."
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
+                rows="3"
+                value={newEntry.notes}
+                onChange={(e) =>
+                  setNewEntry({ ...newEntry, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-start">
+            <button
+              onClick={handleAddEntry}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow-sm transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Adding..." : "+ Add Entry"}
+            </button>
           </div>
         </div>
-
-        <div className="mt-6 flex justify-start">
-          <button
-            // api comment
-            // onClick={handleAddEntry}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg shadow-sm transition duration-200"
-          >
-            + Add Entry
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Timesheet Table */}
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border-b">
-                    Date
-                  </th>
-                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border-b">
-                    Location
-                  </th>
-                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border-b">
-                    Hours
-                  </th>
-                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 border-b">
-                    Note
-                  </th>
-                  <th className="px-4 py-2 text-center text-sm font-semibold text-gray-700 border-b">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEntries.length > 0 ? (
-                  filteredEntries.map((entry) => (
-                    <tr key={entry.id} className="hover:bg-gray-50 transition">
-                      <td className="px-4 py-2 border-b text-gray-800">
-                        {entry.date}
-                      </td>
-                      <td className="px-4 py-2 border-b text-gray-800">
-                        {entry.location}
-                      </td>
-                      <td className="px-4 py-2 border-b text-gray-800">
-                        {entry.hours}
-                      </td>
-                      <td className="px-4 py-2 border-b text-gray-800">
-                        {entry.note}
-                      </td>
-                      <td className="px-4 py-2 border-b text-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(entry)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          // api comment
-                          // onClick={() => handleDelete(entry.id)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </td>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-600 mt-2">Loading timesheet entries...</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                        Hours
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                        Location
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                        Notes
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                        Status
+                      </th>
+                      {/* <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">
+                        Actions
+                      </th> */}
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="5"
-                      className="text-center text-gray-500 py-4 italic"
-                    >
-                      No entries found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="mt-4 flex justify-between">
-          <p className="text-sm text-gray-500 mt-2">
-            Total entries : {entries.length}
-          </p>
-          <div className="text-sm text-gray-500 mt-2">
-            {(() => {
-              const parseHours = (str) => {
-                const [h, m] = str.split(":").map(Number);
-                return h + m / 60;
-              };
+                  </thead>
+                  <tbody>
+                    {filteredEntries.length > 0 ? (
+                      filteredEntries.map((entry) => (
+                        <tr
+                          key={entry.id}
+                          className="hover:bg-gray-50 transition"
+                        >
+                          <td className="px-4 py-3 border-b text-gray-800">
+                            {formatDisplayDate(entry.date)}
+                          </td>
+                          <td className="px-4 py-3 border-b text-gray-800">
+                            {entry.startTime} - {entry.endTime}
+                          </td>
+                          <td className="px-4 py-3 border-b text-gray-800 font-medium">
+                            {entry.totalHours || 0}h{" "}
+                            {console.log("printing total he", entry)}
+                          </td>
+                          <td className="px-4 py-3 border-b text-gray-800">
+                            {entry.location}
+                          </td>
+                          <td
+                            className="px-4 py-3 border-b text-gray-800 max-w-xs truncate"
+                            title={entry.notes}
+                          >
+                            {entry.notes || "-"}
+                          </td>
+                          <td className="px-4 py-3 border-b">
+                            {getStatusBadge(entry.status)}
+                          </td>
+                          {/* <td className="px-4 py-3 border-b text-center space-x-2">
+                            {entry.status === "draft" && (
+                              <>
+                                <button
+                                  onClick={() => handleEdit(entry)}
+                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  title="Edit"
+                                >
+                                  <Edit size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(entry.id)}
+                                  className="text-red-600 hover:text-red-800 p-1"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleSubmit(entry.id)}
+                                  className="text-green-600 hover:text-green-800 p-1"
+                                  title="Submit for Review"
+                                >
+                                  <Send size={18} />
+                                </button>
+                              </>
+                            )}
+                            {entry.status !== "draft" && (
+                              <span className="text-gray-400 text-sm">
+                                Read Only
+                              </span>
+                            )}
+                          </td> */}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="7"
+                          className="text-center text-gray-500 py-8 italic"
+                        >
+                          No timesheet entries found. Create your first entry
+                          above.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-              const totalHoursDecimal = entries.reduce(
-                (sum, entry) => sum + parseHours(entry.hours),
-                0
-              );
-
-              const totalHours = Math.floor(totalHoursDecimal);
-              const totalMinutes = Math.round(
-                (totalHoursDecimal - totalHours) * 60
-              );
-
-              return `Total Hours: ${totalHours}h : ${totalMinutes}m`;
-            })()}
-          </div>
+              <div className="mt-4 flex justify-between items-center">
+                <p className="text-sm text-gray-500">
+                  Total entries: {entries.length}
+                </p>
+                <div className="text-sm text-gray-500">
+                  Total Hours: {stats.totalHours}h
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Edit Entry</h2>
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Edit Timesheet Entry</h2>
 
             <div className="flex flex-col mb-3">
               <label className="text-sm font-medium text-gray-700 mb-1">
-                Date
+                Date *
               </label>
               <input
                 type="date"
@@ -403,49 +780,57 @@ const Timesheet = ({ coachId }) => {
               />
             </div>
 
-            <div className="flex flex-col mb-3">
-              <label className="text-sm font-medium text-gray-700 mb-1">
-                Time
-              </label>
-              <input
-                type="time"
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                value={editingEntry.hours}
-                onChange={(e) =>
-                  setEditingEntry({ ...editingEntry, hours: e.target.value })
+            {/* Start Time Selection */}
+            <div className="mb-3">
+              <TimeSelection
+                time={editingEntry.startTime}
+                onChange={(startTime) =>
+                  setEditingEntry({ ...editingEntry, startTime })
                 }
+                label="Start Time"
               />
             </div>
 
+            {/* End Time Selection */}
+            <div className="mb-3">
+              <TimeSelection
+                time={editingEntry.endTime}
+                onChange={(endTime) =>
+                  setEditingEntry({ ...editingEntry, endTime })
+                }
+                label="End Time"
+              />
+            </div>
+
+            {timeError && (
+              <div className="mb-3 text-red-600 text-sm">{timeError}</div>
+            )}
+
             <div className="flex flex-col mb-3">
               <label className="text-sm font-medium text-gray-700 mb-1">
-                Location
+                Location *
               </label>
-              <select
+              <input
+                type="text"
                 className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 value={editingEntry.location}
                 onChange={(e) =>
                   setEditingEntry({ ...editingEntry, location: e.target.value })
                 }
-              >
-                {locations.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))}
-              </select>
+                placeholder="Enter location name..."
+              />
             </div>
 
             <div className="flex flex-col mb-4">
               <label className="text-sm font-medium text-gray-700 mb-1">
-                Note
+                Notes
               </label>
-              <input
-                type="text"
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                value={editingEntry.note}
+              <textarea
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 resize-none"
+                rows="3"
+                value={editingEntry.notes}
                 onChange={(e) =>
-                  setEditingEntry({ ...editingEntry, note: e.target.value })
+                  setEditingEntry({ ...editingEntry, notes: e.target.value })
                 }
               />
             </div>
@@ -458,11 +843,10 @@ const Timesheet = ({ coachId }) => {
                 Cancel
               </button>
               <button
-                // api comment
                 // onClick={handleSaveEdit}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
               >
-                Save
+                Save Changes
               </button>
             </div>
           </div>
