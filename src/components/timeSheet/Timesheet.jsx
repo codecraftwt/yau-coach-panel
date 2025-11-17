@@ -664,9 +664,9 @@ const Timesheet = () => {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
                         Status
                       </th>
-                      {/* <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">
                         Actions
-                      </th> */}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -698,7 +698,7 @@ const Timesheet = () => {
                           <td className="px-4 py-3 border-b">
                             {getStatusBadge(entry.status)}
                           </td>
-                          {/* <td className="px-4 py-3 border-b text-center space-x-2">
+                          <td className="px-4 py-3 border-b text-center space-x-2">
                             {entry.status === "draft" && (
                               <>
                                 <button
@@ -729,7 +729,7 @@ const Timesheet = () => {
                                 Read Only
                               </span>
                             )}
-                          </td> */}
+                          </td>
                         </tr>
                       ))
                     ) : (
