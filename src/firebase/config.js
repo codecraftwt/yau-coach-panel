@@ -74,7 +74,17 @@ export const API_CONFIG = {
       update: '/messages/:id',
       delete: '/messages/:id'
     },
-
+    // timesheets endpoints
+    timesheets: { 
+      get: '/timesheets',        
+      create: '/timesheets',       
+      update: '/timesheets/{id}',  
+      delete: '/timesheets/{id}'   
+    },
+    // location endpoints
+    locations: { 
+      get: '/locations',         
+      },
     // Parent endpoints
     parents: {
       getAll: '/parents',
