@@ -76,15 +76,17 @@ export const API_CONFIG = {
     },
     // timesheets endpoints
     timesheets: { 
-      get: '/timesheets',        
-      create: '/timesheets',       
-      update: '/timesheets/{id}',  
-      delete: '/timesheets/{id}'   
+      get: '/timesheets/coach/:coachId',        
+      create: '/timesheets/:coachId',       
+      update: '/timesheets/:coachId/entry/:id',  
+      delete: '/timesheets/:coachId/entry/:id',
+      submit: '/timesheets/:coachId/entry/:id/submit',
+      stats: '/timesheets/coach/:coachId/stats'
     },
     // location endpoints
     locations: { 
       get: '/locations',         
-      },
+    },
     // Parent endpoints
     parents: {
       getAll: '/parents',
