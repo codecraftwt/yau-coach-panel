@@ -1,6 +1,6 @@
 // EnhancedTimesheet.jsx
 import React, { useState, useEffect } from "react";
-import { Edit, Trash2, Send, Clock } from "lucide-react";
+import { Edit, Trash2, Send, Clock, Eye } from "lucide-react";
 import {
   getTimesheetEntries,
   createTimesheetEntry,
@@ -13,6 +13,7 @@ const Timesheet = () => {
   const [entries, setEntries] = useState([]);
   const [filteredEntries, setFilteredEntries] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [addTimesheetButton, setAddTimesheetButton] = useState(false);
   const [editingEntry, setEditingEntry] = useState({
@@ -23,6 +24,17 @@ const Timesheet = () => {
     location: "",
     notes: "",
     status: "draft",
+  });
+
+  const [viewingEntry, setViewingEntry] = useState({
+    id: null,
+    date: "",
+    startTime: { hours: "", minutes: "", ampm: "AM" },
+    endTime: { hours: "", minutes: "", ampm: "AM" },
+    location: "",
+    notes: "",
+    status: "draft",
+    totalHours: 0,
   });
 
   const [newEntry, setNewEntry] = useState({
@@ -310,6 +322,21 @@ const Timesheet = () => {
     setTimeError("");
   };
 
+  // View entry details
+  const handleView = (entry) => {
+    setViewingEntry({
+      id: entry.id,
+      date: entry.date?.split("T")[0] || new Date().toISOString().split("T")[0],
+      startTime: timeStringToObject(entry.startTime),
+      endTime: timeStringToObject(entry.endTime),
+      location: entry.location,
+      notes: entry.notes || "",
+      status: entry.status,
+      totalHours: entry.totalHours || 0,
+    });
+    setIsViewModalOpen(true);
+  };
+
   // Save edited entry
   const handleSaveEdit = async () => {
     if (
@@ -445,7 +472,7 @@ const Timesheet = () => {
   };
 
   // Time Selection Component
-  const TimeSelection = ({ time, onChange, label }) => (
+  const TimeSelection = ({ time, onChange, label, readOnly = false }) => (
     <div className="flex flex-col">
       <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
         <Clock size={16} className="text-gray-400" />
@@ -458,6 +485,7 @@ const Timesheet = () => {
           onChange={(e) => onChange({ ...time, hours: e.target.value })}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
+          disabled={readOnly}
         >
           <option value="">Hour</option>
           {hoursOptions.map((hour) => (
@@ -473,6 +501,7 @@ const Timesheet = () => {
           onChange={(e) => onChange({ ...time, minutes: e.target.value })}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
+          disabled={readOnly}
         >
           <option value="">Min</option>
           {minutesOptions.map((minute) => (
@@ -488,6 +517,7 @@ const Timesheet = () => {
           onChange={(e) => onChange({ ...time, ampm: e.target.value })}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
+          disabled={readOnly}
         >
           <option value="AM">AM</option>
           <option value="PM">PM</option>
@@ -507,7 +537,7 @@ const Timesheet = () => {
           onClick={() => setAddTimesheetButton((pre) => !pre)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium shadow-sm"
         >
-          {addTimesheetButton ? "Add Timesheet" : "Add Timesheet"}
+          {addTimesheetButton ? "Add Hours" : "Add Hours"}
         </button>
       </div>
 
@@ -643,63 +673,79 @@ const Timesheet = () => {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
+            <div className="min-w-full inline-block align-middle">
+              <div className="overflow-hidden border border-gray-200 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                         Date
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                         Time
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                         Hours
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                         Location
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                         Notes
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-200 bg-white">
                     {filteredEntries.length > 0 ? (
                       filteredEntries.map((entry) => (
                         <tr
                           key={entry.id}
                           className="hover:bg-gray-50 transition"
                         >
-                          <td className="px-4 py-3 border-b text-gray-800">
+                          <td className="px-4 py-3 text-gray-800 whitespace-nowrap">
                             {formatDisplayDate(entry.date)}
                           </td>
-                          <td className="px-4 py-3 border-b text-gray-800">
+                          <td className="px-4 py-3 text-gray-800 whitespace-nowrap">
                             {entry.startTime} - {entry.endTime}
                           </td>
-                          <td className="px-4 py-3 border-b text-gray-800 font-medium">
-                            {entry.totalHours || 0}h{" "}
-                            {console.log("printing total he", entry)}
-                          </td>
-                          <td className="px-4 py-3 border-b text-gray-800">
-                            {entry.location}
+                          <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">
+                            {entry.totalHours || 0}h
                           </td>
                           <td
-                            className="px-4 py-3 border-b text-gray-800 max-w-xs truncate"
+                            className="px-4 py-3 text-gray-800 max-w-xs truncate"
+                            title={entry.location}
+                          >
+                            {entry.location || "-"}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-gray-800 max-w-xs truncate"
                             title={entry.notes}
                           >
                             {entry.notes || "-"}
                           </td>
-                          <td className="px-4 py-3 border-b">
+                          <td className="px-4 py-3 whitespace-nowrap">
                             {getStatusBadge(entry.status)}
                           </td>
-                          <td className="px-4 py-3 border-b text-center space-x-2">
-                            {entry.status === "draft" && (
+                          <td className="px-4 py-3 text-center space-x-2 whitespace-nowrap">
+                            {/* Eye button for all entries */}
+                            <button
+                              onClick={() => handleView(entry)}
+                              className="text-gray-600 hover:text-gray-800 p-1"
+                              title="View Details"
+                            >
+                              {(entry.status !== "draft" && entry.status !== undefined) && (
+                                <Eye size={18} />
+                              )}
+                            </button>
+
+                            {/* Edit, Delete, Submit buttons only for draft entries */}
+                            {(entry.status === "draft" || entry.status === undefined) && (
                               <>
                                 <button
                                   onClick={() => handleEdit(entry)}
@@ -724,11 +770,6 @@ const Timesheet = () => {
                                 </button>
                               </>
                             )}
-                            {entry.status !== "draft" && (
-                              <span className="text-gray-400 text-sm">
-                                Read Only
-                              </span>
-                            )}
                           </td>
                         </tr>
                       ))
@@ -745,6 +786,8 @@ const Timesheet = () => {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
               </div>
 
               <div className="mt-4 flex justify-between items-center">
@@ -843,10 +886,93 @@ const Timesheet = () => {
                 Cancel
               </button>
               <button
-                // onClick={handleSaveEdit}
+                onClick={handleSaveEdit}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
               >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {isViewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Timesheet Entry Details</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  Date
+                </label>
+                <div className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">
+                  {formatDisplayDate(viewingEntry.date)}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  Start Time
+                </label>
+                <div className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">
+                  {timeObjectToString(viewingEntry.startTime)}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  End Time
+                </label>
+                <div className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">
+                  {timeObjectToString(viewingEntry.endTime)}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  Total Hours
+                </label>
+                <div className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">
+                  {viewingEntry.totalHours}h
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  Location
+                </label>
+                <div className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">
+                  {viewingEntry.location}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <div className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 min-h-[80px]">
+                  {viewingEntry.notes || "-"}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <div className="border border-gray-300 rounded-lg px-3 py-2">
+                  {getStatusBadge(viewingEntry.status)}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setIsViewModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+              >
+                Close
               </button>
             </div>
           </div>

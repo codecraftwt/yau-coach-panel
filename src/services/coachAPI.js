@@ -8,7 +8,7 @@ const getCoachId = () => {
     if (!currentUser || !currentUser.uid) {
       throw new Error('No coach ID found in localStorage. Please log in again.');
     }
-    return currentUser.uid;
+    return currentUser.id;
   } catch (error) {
     console.error('Error getting coach ID from localStorage:', error);
     throw new Error('Authentication required. Please log in again.');
