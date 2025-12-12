@@ -35,6 +35,7 @@ const Timesheet = () => {
     notes: "",
     status: "draft",
     totalHours: 0,
+    rejectionReason: "",
   });
 
   const [newEntry, setNewEntry] = useState({
@@ -333,6 +334,7 @@ const Timesheet = () => {
       notes: entry.notes || "",
       status: entry.status,
       totalHours: entry.totalHours || 0,
+      rejectionReason: entry.rejectionReason || "",
     });
     setIsViewModalOpen(true);
   };
@@ -410,10 +412,12 @@ const Timesheet = () => {
   };
 
   // Submit timesheet for review
-  const handleSubmit = async (id) => {
+  const handleSubmit = async (id, isResubmit = false) => {
     if (
       !window.confirm(
-        "Are you sure you want to submit this timesheet for review? You won't be able to edit it after submission."
+        isResubmit
+          ? "Resubmit this timesheet for review?"
+          : "Are you sure you want to submit this timesheet for review? You won't be able to edit it after submission."
       )
     )
       return;
@@ -428,7 +432,7 @@ const Timesheet = () => {
         // Fetch timesheet entries
         const entriesData = await getTimesheetEntries();
         setEntries(entriesData.data || []);
-        alert("Timesheet submitted for review successfully!");
+        alert(isResubmit ? "Timesheet resubmitted successfully!" : "Timesheet submitted for review successfully!");
       } else {
         alert(response.message || "Failed to submit timesheet");
       }
@@ -732,44 +736,66 @@ const Timesheet = () => {
                           <td className="px-4 py-3 whitespace-nowrap">
                             {getStatusBadge(entry.status)}
                           </td>
-                          <td className="px-4 py-3 text-center space-x-2 whitespace-nowrap">
-                            {/* Eye button for all entries */}
-                            <button
-                              onClick={() => handleView(entry)}
-                              className="text-gray-600 hover:text-gray-800 p-1"
-                              title="View Details"
-                            >
-                              {(entry.status !== "draft" && entry.status !== undefined) && (
-                                <Eye size={18} />
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-2 min-w-[140px]">
+                              {/* Eye button for non-draft entries (approved/rejected/submitted) */}
+                              {entry.status !== "draft" && entry.status !== undefined && (
+                                <button
+                                  onClick={() => handleView(entry)}
+                                  className="text-gray-600 hover:text-gray-800 p-1"
+                                  title="View Details"
+                                >
+                                  <Eye size={18} />
+                                </button>
                               )}
-                            </button>
 
-                            {/* Edit, Delete, Submit buttons only for draft entries */}
-                            {(entry.status === "draft" || entry.status === undefined) && (
-                              <>
-                                <button
-                                  onClick={() => handleEdit(entry)}
-                                  className="text-blue-600 hover:text-blue-800 p-1"
-                                  title="Edit"
-                                >
-                                  <Edit size={18} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(entry.id)}
-                                  className="text-red-600 hover:text-red-800 p-1"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                                <button
-                                  onClick={() => handleSubmit(entry.id)}
-                                  className="text-green-600 hover:text-green-800 p-1"
-                                  title="Submit for Review"
-                                >
-                                  <Send size={18} />
-                                </button>
-                              </>
-                            )}
+                              {/* Edit, Delete, Submit buttons for draft entries (3 actions) */}
+                              {(entry.status === "draft" || entry.status === undefined) && (
+                                <>
+                                  <button
+                                    onClick={() => handleEdit(entry)}
+                                    className="text-blue-600 hover:text-blue-800 p-1"
+                                    title="Edit"
+                                  >
+                                    <Edit size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(entry.id)}
+                                    className="text-red-600 hover:text-red-800 p-1"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleSubmit(entry.id)}
+                                    className="text-green-600 hover:text-green-800 p-1"
+                                    title="Submit for Review"
+                                  >
+                                    <Send size={18} />
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Edit + Resubmit for rejected entries (with view) */}
+                              {entry.status === "rejected" && (
+                                <>
+                                  <button
+                                    onClick={() => handleEdit(entry)}
+                                    className="text-blue-600 hover:text-blue-800 p-1"
+                                    title="Edit"
+                                  >
+                                    <Edit size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleSubmit(entry.id, true)}
+                                    className="text-green-600 hover:text-green-800 p-1"
+                                    title="Resubmit for Review"
+                                  >
+                                    <Send size={18} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -965,6 +991,18 @@ const Timesheet = () => {
                   {getStatusBadge(viewingEntry.status)}
                 </div>
               </div>
+
+              {/* Show rejection reason if status is rejected */}
+              {viewingEntry.status === "rejected" && viewingEntry.rejectionReason && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1">
+                    Rejection Reason
+                  </label>
+                  <div className="border border-red-300 rounded-lg px-3 py-2 bg-red-50 text-red-800">
+                    {viewingEntry.rejectionReason}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end mt-6">
