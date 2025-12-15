@@ -4,7 +4,8 @@ import {
   signOut,
   onAuthStateChanged,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   doc, 
@@ -91,6 +92,35 @@ export const signInCoach = async (email, password) => {
     // Clear any stored data on login failure
     localStorage.removeItem('coachUser');
     localStorage.removeItem('coachAuthTime');
+    throw error;
+  }
+};
+
+// Send password reset email for coaches only
+export const sendCoachPasswordReset = async (email) => {
+  try {
+    const normalizedEmail = email?.toLowerCase().trim();
+    if (!normalizedEmail) {
+      throw new Error('Please enter your email to reset your password.');
+    }
+
+    // Verify the email belongs to a coach account
+    const coachQuery = query(
+      collection(db, 'users'),
+      where('email', '==', normalizedEmail),
+      where('role', '==', 'coach'),
+      limit(1)
+    );
+
+    const snapshot = await getDocs(coachQuery);
+    if (snapshot.empty) {
+      throw new Error('No coach account found for this email.');
+    }
+
+    await sendPasswordResetEmail(auth, normalizedEmail);
+    console.log('📧 Password reset email sent to coach:', normalizedEmail);
+  } catch (error) {
+    console.error('❌ Error sending coach password reset email:', error);
     throw error;
   }
 };
