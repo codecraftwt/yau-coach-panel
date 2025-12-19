@@ -8,6 +8,7 @@ import {
   deleteTimesheetEntry,
   submitTimesheetEntry,
 } from "../../services/coachAPI";
+import dayjs from 'dayjs';
 
 const Timesheet = () => {
   const [entries, setEntries] = useState([]);
@@ -446,11 +447,13 @@ const Timesheet = () => {
   const formatDisplayDate = (dateString) => {
     if (!dateString) return "Invalid Date";
     try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      return new Date(dateString).toString();
+      // return dateString.toString()
+      // return new Date(dateString).toLocaleDateString("en-US", {
+      //   year: "numeric",
+      //   month: "short",
+      //   day: "numeric",
+      // });
     } catch (error) {
       return "Invalid Date";
     }
@@ -713,7 +716,15 @@ const Timesheet = () => {
                           className="hover:bg-gray-50 transition"
                         >
                           <td className="px-4 py-3 text-gray-800 whitespace-nowrap">
-                            {formatDisplayDate(entry.date)}
+                          {!entry?.date 
+                            ? " " 
+                            : (typeof(entry.date) === 'object' || entry.date instanceof Date && isNaN(entry.date) 
+                                ? "Invalid Date" 
+                                : dayjs(entry.date).isValid() 
+                                  ? dayjs(entry.date).format("DD-MMM-YYYY") // Format to '07-Dec-2025'
+                                  : "Invalid Date"
+                            )
+                          }
                           </td>
                           <td className="px-4 py-3 text-gray-800 whitespace-nowrap">
                             {entry.startTime} - {entry.endTime}
