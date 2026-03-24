@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import CoachLayout from './components/layout/CoachLayout';
 import CoachLogin from './components/auth/CoachLogin';
+import CoachForgotPassword from './components/auth/CoachForgotPassword';
 import { useCoachAuth } from './hooks/useCoachAuth';
 import { isCoachSessionValid } from './firebase/coachAuth';
 import './styles/globals.css';
@@ -79,6 +80,10 @@ function App() {
                 <CoachLogin /> : 
                 <Navigate to="/dashboard" replace />
             } 
+          />
+          <Route 
+            path="/forgot-password" 
+            element={!user ? <CoachForgotPassword /> : <Navigate to="/dashboard" replace />} 
           />
 
           {/* Protected Coach Routes */}

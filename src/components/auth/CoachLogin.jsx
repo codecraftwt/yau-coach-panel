@@ -1,9 +1,11 @@
 // components/auth/CoachLogin.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signInCoach } from '../../firebase/coachAuth';
 import { Eye, EyeOff, User, Lock, LogIn } from 'lucide-react';
 
 const CoachLogin = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -44,6 +46,10 @@ const CoachLogin = () => {
     if (error) setError(''); // Clear error when user starts typing
   };
 
+  const handleForgotPassword = () => {
+    navigate('/forgot-password', { state: { emailPrefill: formData.email } });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-md w-full space-y-8 p-8">
@@ -69,7 +75,6 @@ const CoachLogin = () => {
                 </div>
               </div>
             )}
-
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -150,11 +155,9 @@ const CoachLogin = () => {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => {
-                  // Handle forgot password
-                  alert('Please contact administration to reset your password:\ncoaches@yauapp.com or (555) 123-4567');
-                }}
-                className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="text-sm text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-60"
               >
                 Forgot your password?
               </button>
